@@ -125,10 +125,10 @@ func main() {
 	lport := flag.String("p", "5000", "port")
 	flag.Parse()
 	if *mode == "s" {
-		start_srv("4433", "107.172.140.38", "1086")
+		start_srv("443", "107.172.140.38", "1086")
 
 	} else {
 
-		start_cli("87.248.130.83:4433", *lport)
+		start_cli("87.248.130.83:443", *lport)
 	}
 }
