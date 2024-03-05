@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"strings"
 	"sync"
 
 	"github.com/hashicorp/yamux"
@@ -28,8 +29,50 @@ func proxy(conn1, conn2 net.Conn) {
 
 	wg.Wait()
 }
-func start_srv(lp, tip, v2p string) {
 
+type Srv struct {
+	Laddr  string
+	Passwd string
+}
+
+func handle_srv_listener(conn net.Conn, passwd string) {
+
+	authBuff := make([]byte, 1000)
+	conn.Read(authBuff)
+	hello_buff := strings.Split(string(authBuff), "_")
+	if hello_buff[0] == passwd {
+
+		session, err := yamux.Client(conn, nil)
+		if err != nil {
+			log.Fatalf("failed start yamux client: %s", err)
+
+		}
+
+		listener, err := net.Listen("tcp", "0.0.0.0:"+hello_buff[1])
+		if err != nil {
+			fmt.Printf("err raised %s", err)
+			return
+		}
+		for {
+			outerconn, err := listener.Accept()
+			if err != nil {
+				log.Printf("server: accept: %s", err)
+
+			}
+			stream, err := session.Open()
+			if err != nil {
+
+				log.Fatalf("failed: %s", err)
+
+			}
+
+			go proxy(outerconn, stream)
+
+		}
+	}
+}
+
+func (s Srv) strat_listener() {
 	cert, err := tls.LoadX509KeyPair("tls.cert", "tls.key")
 	if err != nil {
 		log.Printf("err: %s", err)
@@ -38,97 +81,100 @@ func start_srv(lp, tip, v2p string) {
 		Certificates: []tls.Certificate{cert},
 	}
 
-	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", lp))
-
+	listener, err := net.Listen("tcp", s.Laddr)
 	if err != nil {
 		log.Fatalf("server: listen: %s", err)
 	}
 	for {
+
 		conn, err := listener.Accept()
-
-		if conn.RemoteAddr().String() != tip {
-			return
-		}
-
 		if err != nil {
 			log.Printf("server: accept: %s", err)
 
 		}
-
 		tlsConn := tls.Server(conn, &conf)
-
-		sesssion, err := yamux.Server(tlsConn, nil)
-		if err != nil {
-			log.Fatalf("failed: %s", err)
-
-		}
-		for {
-			stream, err := sesssion.Accept()
-			if err != nil {
-				log.Fatalf("failed: %s", err)
-
-			}
-			destconn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%s", v2p))
-			if err != nil {
-				log.Fatalf("failed: %s", err)
-
-			}
-
-			go proxy(destconn, stream)
-		}
-
+		handle_srv_listener(tlsConn, s.Passwd)
 	}
 }
 
-func start_cli(raddr, lp string) {
+type Cli struct {
+	RemoteAddr  string
+	ExposedPort string
+	Passwd      string
+	V2p         string
+}
+
+func (c Cli) start_cli() {
 	conf := tls.Config{
 		InsecureSkipVerify: true,
 	}
 
-	conn, err := net.Dial("tcp", raddr)
+	conn, err := net.Dial("tcp", c.RemoteAddr)
 	if err != nil {
 		log.Fatalf("failed: %s", err)
 	}
-
 	tlsConn := tls.Client(conn, &conf)
+	tlsConn.Write([]byte(fmt.Sprintf("%s_%s_", c.Passwd, c.ExposedPort)))
 
-	session, err := yamux.Client(tlsConn, nil)
-	if err != nil {
-		log.Fatalf("failed start client: %s", err)
-
-	}
-
-	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", lp))
+	sesssion, err := yamux.Server(tlsConn, nil)
 	if err != nil {
 		log.Fatalf("failed: %s", err)
 
 	}
 	for {
-		outerconn, err := listener.Accept()
+		stream, err := sesssion.Accept()
 		if err != nil {
-			fmt.Printf("err %s", err)
-		}
+			log.Fatalf("failed: %s", err)
 
-		stream, err := session.Open()
+		}
+		destconn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%s", c.V2p))
 		if err != nil {
 			log.Fatalf("failed: %s", err)
 
 		}
 
-		go proxy(outerconn, stream)
+		go proxy(destconn, stream)
 	}
 
 }
 
 func main() {
 	mode := flag.String("m", "s", "mode ")
-	lport := flag.String("p", "5000", "port")
+	v2port := flag.String("v2p", "1080", "port")
+	eport := flag.String("ep", "5012", "port")
+	passwd := flag.String("passwd", "123456", "passwd")
+	addr := flag.String("addr", "0.0.0.0:4443", "addr")
+
 	flag.Parse()
 	if *mode == "s" {
-		start_srv("443", "107.172.140.38", "1086")
 
-	} else {
+		// s := Srv{
+		// 	Laddr:  "0.0.0.0:8000",
+		// 	Passwd: "hello",
+		// }
 
-		start_cli("87.248.130.83:443", *lport)
+		s := Srv{
+			Laddr:  *addr,
+			Passwd: *passwd,
+		}
+		s.strat_listener()
+
+	} else if *mode == "c" {
+
+		// c := Cli{
+		// 	RemoteAddr:  "127.0.0.1:8000",
+		// 	ExposedPort: "5012",
+		// 	V2p:         "1080",
+		// 	Passwd:      "hello",
+		// }
+
+		c := Cli{
+			RemoteAddr:  *addr,
+			ExposedPort: *eport,
+			V2p:         *v2port,
+			Passwd:      *passwd,
+		}
+		c.start_cli()
+
 	}
 }
