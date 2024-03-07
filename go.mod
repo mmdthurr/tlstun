@@ -1,4 +1,4 @@
-module mmd/ssltun
+module mmd/tlstun
 
 go 1.21.6
 

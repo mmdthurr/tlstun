@@ -18,6 +18,9 @@ func proxy(conn1, conn2 net.Conn) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
+	defer conn1.Close()
+	defer conn2.Close()
+
 	go func() {
 		defer wg.Done()
 		io.Copy(conn1, conn2)
@@ -35,34 +38,43 @@ type Srv struct {
 	Passwd string
 }
 
+var ptol = make(map[string]net.Listener)
+
 func handle_srv_listener(conn net.Conn, passwd string) {
 
 	authBuff := make([]byte, 1000)
 	conn.Read(authBuff)
 	hello_buff := strings.Split(string(authBuff), "_")
 	if hello_buff[0] == passwd {
-
 		session, err := yamux.Client(conn, nil)
 		if err != nil {
 			log.Fatalf("failed start yamux client: %s", err)
 
 		}
-
+		l, ok := ptol[hello_buff[1]]
+		if ok {
+			l.Close()
+		}
 		listener, err := net.Listen("tcp", "0.0.0.0:"+hello_buff[1])
 		if err != nil {
 			fmt.Printf("err raised %s", err)
 			return
 		}
+
+		ptol[hello_buff[1]] = listener
+
 		for {
+
 			outerconn, err := listener.Accept()
 			if err != nil {
-				log.Printf("server: accept: %s", err)
-
+				log.Printf("server: accept: 11  %s", err)
+				listener.Close()
+				break
 			}
 			stream, err := session.Open()
 			if err != nil {
-
-				log.Fatalf("failed: %s", err)
+				listener.Close()
+				break
 
 			}
 
@@ -92,8 +104,9 @@ func (s Srv) strat_listener() {
 			log.Printf("server: accept: %s", err)
 
 		}
+
 		tlsConn := tls.Server(conn, &conf)
-		handle_srv_listener(tlsConn, s.Passwd)
+		go handle_srv_listener(tlsConn, s.Passwd)
 	}
 }
 
@@ -132,7 +145,6 @@ func (c Cli) start_cli() {
 			log.Fatalf("failed: %s", err)
 
 		}
-
 		go proxy(destconn, stream)
 	}
 
