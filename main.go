@@ -46,7 +46,7 @@ func handle_srv_listener(conn net.Conn, passwd string) {
 	conn.Read(authBuff)
 	hello_buff := strings.Split(string(authBuff), "_")
 	if hello_buff[0] == passwd {
-		session, err := yamux.Client(conn, nil)
+		session, err := yamux.Client(conn, yamux.DefaultConfig())
 		if err != nil {
 			log.Fatalf("failed start yamux client: %s", err)
 
@@ -129,7 +129,7 @@ func (c Cli) start_cli() {
 	tlsConn := tls.Client(conn, &conf)
 	tlsConn.Write([]byte(fmt.Sprintf("%s_%s_", c.Passwd, c.ExposedPort)))
 
-	sesssion, err := yamux.Server(tlsConn, nil)
+	sesssion, err := yamux.Server(tlsConn, yamux.DefaultConfig())
 	if err != nil {
 		log.Fatalf("failed: %s", err)
 
