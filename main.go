@@ -9,6 +9,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/hashicorp/yamux"
 )
@@ -36,11 +37,12 @@ func proxy(conn1, conn2 net.Conn) {
 type Srv struct {
 	Laddr  string
 	Passwd string
+	next   uint32
 }
 
 var ptol = make(map[string]net.Listener)
 
-func handle_srv_listener(conn net.Conn, passwd string) {
+func handle_srv_listener(conn net.Conn, passwd string, roundp int) {
 
 	authBuff := make([]byte, 1000)
 	conn.Read(authBuff)
@@ -81,11 +83,18 @@ func handle_srv_listener(conn net.Conn, passwd string) {
 			go proxy(outerconn, stream)
 
 		}
+	} else {
+		rconn, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", roundp))
+		if err != nil {
+			return
+		}
+		rconn.Write(authBuff)
+		go proxy(rconn, conn)
 	}
 }
 
-func (s Srv) strat_listener() {
-	cert, err := tls.LoadX509KeyPair("tls.cert", "tls.key")
+func (s Srv) strat_listener(cp, kp string, pbase int) {
+	cert, err := tls.LoadX509KeyPair(cp, kp)
 	if err != nil {
 		log.Printf("err: %s", err)
 	}
@@ -106,7 +115,8 @@ func (s Srv) strat_listener() {
 		}
 
 		tlsConn := tls.Server(conn, &conf)
-		go handle_srv_listener(tlsConn, s.Passwd)
+		n := atomic.AddUint32(&s.next, 1)
+		go handle_srv_listener(tlsConn, s.Passwd, ((int(n)-1)%20)+pbase)
 	}
 }
 
@@ -151,11 +161,16 @@ func (c Cli) start_cli() {
 }
 
 func main() {
+
 	mode := flag.String("m", "s", "mode ")
 	v2port := flag.String("v2p", "1080", "port")
 	eport := flag.String("ep", "5012", "port")
 	passwd := flag.String("passwd", "123456", "passwd")
 	addr := flag.String("addr", "0.0.0.0:4443", "addr")
+	cp := flag.String("cp", "tls.cert", "tls cert path")
+	kp := flag.String("kp", "tls.key", "tls key path")
+
+	pbase := flag.Int("pb", 5000, "base port for roundrobin")
 
 	flag.Parse()
 	if *mode == "s" {
@@ -169,7 +184,7 @@ func main() {
 			Laddr:  *addr,
 			Passwd: *passwd,
 		}
-		s.strat_listener()
+		s.strat_listener(*cp, *kp, *pbase)
 
 	} else if *mode == "c" {
 
