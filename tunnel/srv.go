@@ -77,12 +77,10 @@ func start_p80() {
 			p := Nextp(keys, &nuint)
 
 			stream, err := ptol[*p].S.Open()
-			if err != nil {
-				listener.Close()
-				break
-
+			if err == nil {
+				go Proxy(conn, stream)
 			}
-			go Proxy(conn, stream)
+
 		}
 
 	}
@@ -97,8 +95,7 @@ func (s Srv) StartL() {
 	conf := tls.Config{
 		Certificates: []tls.Certificate{cert},
 	}
-	
-	
+
 	go start_p80()
 
 	listener, err := net.Listen("tcp", s.Laddr)
