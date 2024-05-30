@@ -24,7 +24,7 @@ func main() {
 			Tlscert: *tlscert,
 			Tlskey:  *tlskey,
 		}
-		s.StartL()
+		s.StartLmain()
 
 	} else if *mode == "c" {
 

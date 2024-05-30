@@ -12,7 +12,7 @@ import (
 
 var ptol = make(map[string]LandSession)
 
-func handle_l(conn net.Conn, passwd string) {
+func handle_lmain(conn net.Conn, passwd string) {
 
 	authBuff := make([]byte, 1000)
 	conn.Read(authBuff)
@@ -41,11 +41,15 @@ func handle_l(conn net.Conn, passwd string) {
 			if err != nil {
 				log.Printf("server: accept: 11  %s", err)
 				listener.Close()
+				conn.Close()
+				delete(ptol, hello_buff[1])
 				break
 			}
 			stream, err := session.Open()
 			if err != nil {
 				listener.Close()
+				conn.Close()
+				delete(ptol, hello_buff[1])
 				break
 
 			}
@@ -87,7 +91,7 @@ func start_p80() {
 
 }
 
-func (s Srv) StartL() {
+func (s Srv) StartLmain() {
 	cert, err := tls.LoadX509KeyPair(s.Tlscert, s.Tlskey)
 	if err != nil {
 		log.Printf("err: %s", err)
@@ -111,6 +115,6 @@ func (s Srv) StartL() {
 		}
 
 		tlsConn := tls.Server(conn, &conf)
-		go handle_l(tlsConn, s.Passwd)
+		go handle_lmain(tlsConn, s.Passwd)
 	}
 }
