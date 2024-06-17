@@ -1,8 +1,6 @@
 package tunnel
 
 import (
-	"net"
-
 	"github.com/hashicorp/yamux"
 )
 
@@ -21,6 +19,5 @@ type Cli struct {
 }
 
 type LandSession struct {
-	L net.Listener
 	S *yamux.Session
 }

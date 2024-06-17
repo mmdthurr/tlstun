@@ -2,7 +2,6 @@ package tunnel
 
 import (
 	"crypto/tls"
-	"fmt"
 	"log"
 	"net"
 	"strings"
@@ -13,7 +12,7 @@ import (
 var ptol = make(map[string]LandSession)
 
 func handle_lmain(conn net.Conn, passwd string) {
-
+	var nuint uint32 = 0
 	authBuff := make([]byte, 1000)
 	conn.Read(authBuff)
 	hello_buff := strings.Split(string(authBuff), "_")
@@ -23,38 +22,22 @@ func handle_lmain(conn net.Conn, passwd string) {
 			log.Fatalf("failed start yamux client: %s", err)
 
 		}
-		l, ok := ptol[hello_buff[1]]
-		if ok {
-			l.L.Close()
+		ptol[hello_buff[1]] = LandSession{S: session}
+
+	} else {
+		keys := make([]string, 0, len(ptol))
+		for k := range ptol {
+			keys = append(keys, k)
 		}
-		listener, err := net.Listen("tcp", "0.0.0.0:"+hello_buff[1])
-		if err != nil {
-			fmt.Printf("err raised %s", err)
-			return
-		}
+		if len(keys) != 0 {
 
-		ptol[hello_buff[1]] = LandSession{L: listener, S: session}
+			p := Nextp(keys, &nuint)
 
-		for {
-
-			outerconn, err := listener.Accept()
-			if err != nil {
-				log.Printf("server: accept: 11  %s", err)
-				listener.Close()
-				conn.Close()
-				delete(ptol, hello_buff[1])
-				break
+			stream, err := ptol[*p].S.Open()
+			if err == nil {
+				stream.Write(authBuff)
+				go Proxy(conn, stream)
 			}
-			stream, err := session.Open()
-			if err != nil {
-				listener.Close()
-				conn.Close()
-				delete(ptol, hello_buff[1])
-				break
-
-			}
-
-			go Proxy(outerconn, stream)
 
 		}
 	}
