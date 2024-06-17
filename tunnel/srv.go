@@ -14,7 +14,7 @@ var ptol = make(map[string]LandSession)
 func handle_lmain(conn net.Conn, passwd string) {
 	var nuint uint32 = 0
 	authBuff := make([]byte, 1000)
-	conn.Read(authBuff)
+	rsize,_ := conn.Read(authBuff)
 	hello_buff := strings.Split(string(authBuff), "_")
 	if hello_buff[0] == passwd {
 		session, err := yamux.Client(conn, yamux.DefaultConfig())
@@ -35,7 +35,7 @@ func handle_lmain(conn net.Conn, passwd string) {
 
 			stream, err := ptol[*p].S.Open()
 			if err == nil {
-				stream.Write(authBuff)
+				stream.Write(authBuff[:rsize])
 				go Proxy(conn, stream)
 			}
 
