@@ -10,7 +10,7 @@ read addr
 echo enter passwd 
 read passwd
 
-sudo cat <<EOF > /etc/systemd/system/tlstun.service
+sudo cat << EOF > /etc/systemd/system/tlstun.service
 [Unit]
 Description=tls tunnel
 After=network-online.target
