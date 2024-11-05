@@ -17,7 +17,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=tlstun -addr $addr  -passwd $passwd
+ExecStart=tlstun -r $addr  -passwd $passwd
 Restart=always
 RestartSec=60s
 User=root
