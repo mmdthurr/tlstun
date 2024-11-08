@@ -14,7 +14,7 @@ var ptol = make(map[string]LandSession)
 func handle_lmain(conn net.Conn, passwd string) {
 	var nuint uint32 = 0
 	authBuff := make([]byte, 1000)
-	rsize,_ := conn.Read(authBuff)
+	rsize, _ := conn.Read(authBuff)
 	hello_buff := strings.Split(string(authBuff), "_")
 	if hello_buff[0] == passwd {
 		session, err := yamux.Client(conn, yamux.DefaultConfig())
@@ -43,9 +43,9 @@ func handle_lmain(conn net.Conn, passwd string) {
 	}
 }
 
-func start_p80() {
+func start_pdef80(addr string) {
 
-	listener, err := net.Listen("tcp", "0.0.0.0:80")
+	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatalf("server: 80 listener error: %s", err)
 	}
@@ -83,7 +83,7 @@ func (s Srv) StartLmain() {
 		Certificates: []tls.Certificate{cert},
 	}
 
-	go start_p80()
+	go start_pdef80(s.Cliaddr)
 
 	listener, err := net.Listen("tcp", s.Laddr)
 	if err != nil {

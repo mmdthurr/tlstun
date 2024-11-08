@@ -5,6 +5,7 @@ import (
 )
 
 type Srv struct {
+	Cliaddr string
 	Laddr   string
 	Passwd  string
 	Tlscert string
