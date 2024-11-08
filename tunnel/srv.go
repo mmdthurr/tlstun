@@ -19,8 +19,8 @@ func handle_lmain(conn net.Conn, passwd string) {
 	if hello_buff[0] == passwd {
 		session, err := yamux.Client(conn, yamux.DefaultConfig())
 		if err != nil {
-			log.Fatalf("failed start yamux client: %s", err)
-
+			log.Printf("failed start yamux client: %s", err)
+			return
 		}
 		ptol[hello_buff[1]] = LandSession{S: session}
 
@@ -37,6 +37,9 @@ func handle_lmain(conn net.Conn, passwd string) {
 			if err == nil {
 				stream.Write(authBuff[:rsize])
 				go Proxy(conn, stream)
+			} else {
+				ptol[*p].S.Close()
+				delete(ptol, *p)
 			}
 
 		}
@@ -58,7 +61,7 @@ func start_pdef80(addr string) {
 		if len(keys) != 0 {
 			conn, err := listener.Accept()
 			if err != nil {
-				log.Printf("server: 80 accept: %s", err)
+				log.Printf("server: def80 accept: %s", err)
 			}
 
 			p := Nextp(keys, &nuint)
@@ -66,6 +69,9 @@ func start_pdef80(addr string) {
 			stream, err := ptol[*p].S.Open()
 			if err == nil {
 				go Proxy(conn, stream)
+			} else {
+				ptol[*p].S.Close()
+				delete(ptol, *p)
 			}
 
 		}
