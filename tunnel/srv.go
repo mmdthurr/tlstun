@@ -9,12 +9,11 @@ import (
 	"github.com/hashicorp/yamux"
 )
 
-var ptol = make(map[string]LandSession)
+var ptol = make(map[string]map[string]LandSession)
 
 func handle_lmain(conn net.Conn, passwd string) {
-	var nuint uint32 = 0
 	authBuff := make([]byte, 1000)
-	rsize, _ := conn.Read(authBuff)
+	_, _ = conn.Read(authBuff)
 	hello_buff := strings.Split(string(authBuff), "_")
 	if hello_buff[0] == passwd {
 		session, err := yamux.Client(conn, yamux.DefaultConfig())
@@ -22,27 +21,14 @@ func handle_lmain(conn net.Conn, passwd string) {
 			log.Printf("failed start yamux client: %s", err)
 			return
 		}
-		ptol[hello_buff[1]] = LandSession{S: session}
+
+		ptol[hello_buff[2]][hello_buff[1]] = LandSession{S: session}
 
 	} else {
-		keys := make([]string, 0, len(ptol))
-		for k := range ptol {
-			keys = append(keys, k)
-		}
-		if len(keys) != 0 {
 
-			p := Nextp(keys, &nuint)
+		rsp := "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 45\r\n\r\nfaghat heyvona ba ghanon jangal okht migiran!"
+		_, _ = conn.Write([]byte(rsp))
 
-			stream, err := ptol[*p].S.Open()
-			if err == nil {
-				stream.Write(authBuff[:rsize])
-				go Proxy(conn, stream)
-			} else {
-				ptol[*p].S.Close()
-				delete(ptol, *p)
-			}
-
-		}
 	}
 }
 
@@ -53,27 +39,47 @@ func start_pdef80(addr string) {
 		log.Fatalf("server: 80 listener error: %s", err)
 	}
 	var nuint uint32 = 0
+
 	for {
-		keys := make([]string, 0, len(ptol))
-		for k := range ptol {
-			keys = append(keys, k)
+
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Printf("server: def80 accept: %s", err)
 		}
-		if len(keys) != 0 {
-			conn, err := listener.Accept()
-			if err != nil {
-				log.Printf("server: def80 accept: %s", err)
+
+		buff := make([]byte, 4096)
+		rn, _ := conn.Read(buff)
+
+		spd := strings.Split(string(buff), "\r\n")
+		// fmt.Printf("%s", spd[10])
+		for i := 0; i < len(spd); i++ {
+			if strings.HasPrefix(spd[i], "Host: ") {
+				rhost := strings.TrimPrefix(spd[i], "Host: ")
+
+				// customize it based on your domain since my domain be something like this kkdfs.usa.choskosh.cfd then [1] would result in usa
+				pk := strings.Split(rhost, ".")[1]
+
+				keys := make([]string, 0, len(ptol[pk]))
+				for k := range ptol[pk] {
+					keys = append(keys, k)
+				}
+				if len(keys) != 0 {
+
+					p := Nextp(keys, &nuint)
+
+					stream, err := ptol[pk][*p].S.Open()
+					if err == nil {
+						stream.Write(buff[:rn])
+						go Proxy(conn, stream)
+					} else {
+						ptol[pk][*p].S.Close()
+						delete(ptol[pk], *p)
+					}
+
+				}
+
+				break
 			}
-
-			p := Nextp(keys, &nuint)
-
-			stream, err := ptol[*p].S.Open()
-			if err == nil {
-				go Proxy(conn, stream)
-			} else {
-				ptol[*p].S.Close()
-				delete(ptol, *p)
-			}
-
 		}
 
 	}
