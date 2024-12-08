@@ -21,8 +21,12 @@ func handle_lmain(conn net.Conn, passwd string) {
 			log.Printf("failed start yamux client: %s", err)
 			return
 		}
-
-		ptol[hello_buff[2]][hello_buff[1]] = LandSession{S: session}
+		
+		ptolm, ok := ptol[hello_buff[2]]
+		if !ok {
+			ptolm = make(map[string]LandSession)
+		}
+		ptolm[hello_buff[1]] = LandSession{S: session}
 
 	} else {
 
