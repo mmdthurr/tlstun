@@ -22,11 +22,11 @@ func handle_lmain(conn net.Conn, passwd string) {
 			return
 		}
 
-		ptolm, ok := ptol[hello_buff[2]]
+		_, ok := ptol[hello_buff[2]]
 		if !ok {
-			ptolm = make(map[string]LandSession)
+			ptol[hello_buff[2]] = make(map[string]LandSession)
 		}
-		ptolm[hello_buff[1]] = LandSession{S: session}
+		ptol[hello_buff[2]][hello_buff[1]] = LandSession{S: session}
 
 	} else {
 
@@ -55,7 +55,7 @@ func start_pdef80(addr string) {
 		rn, _ := conn.Read(buff)
 
 		spd := strings.Split(string(buff), "\r\n")
-		// fmt.Printf("%s", spd[10])
+	    // log.Printf("%s", spd[10](buff), "\r\n"))
 		for i := 0; i < len(spd); i++ {
 			if strings.HasPrefix(spd[i], "Host: ") {
 				rhost := strings.TrimPrefix(spd[i], "Host: ")
