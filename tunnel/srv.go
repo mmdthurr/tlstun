@@ -21,7 +21,7 @@ func handle_lmain(conn net.Conn, passwd string) {
 			log.Printf("failed start yamux client: %s", err)
 			return
 		}
-		
+
 		ptolm, ok := ptol[hello_buff[2]]
 		if !ok {
 			ptolm = make(map[string]LandSession)
@@ -64,22 +64,27 @@ func start_pdef80(addr string) {
 				pk := strings.Split(rhost, ".")[1]
 
 				log.Printf("%s", pk)
-				
-				keys := make([]string, 0, len(ptol[pk]))
-				for k := range ptol[pk] {
-					keys = append(keys, k)
-				}
-				if len(keys) != 0 {
 
-					p := Nextp(keys, &nuint)
+				lls, ok := ptol[pk]
+				if ok {
 
-					stream, err := ptol[pk][*p].S.Open()
-					if err == nil {
-						stream.Write(buff[:rn])
-						go Proxy(conn, stream)
-					} else {
-						ptol[pk][*p].S.Close()
-						delete(ptol[pk], *p)
+					keys := make([]string, 0, len(lls))
+					for k := range lls {
+						keys = append(keys, k)
+					}
+					if len(keys) != 0 {
+
+						p := Nextp(keys, &nuint)
+
+						stream, err := lls[*p].S.Open()
+						if err == nil {
+							stream.Write(buff[:rn])
+							go Proxy(conn, stream)
+						} else {
+							lls[*p].S.Close()
+							delete(lls, *p)
+						}
+
 					}
 
 				}
