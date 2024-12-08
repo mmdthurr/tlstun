@@ -63,6 +63,8 @@ func start_pdef80(addr string) {
 				// customize it based on your domain since my domain be something like this kkdfs.usa.choskosh.cfd then [1] would result in usa
 				pk := strings.Split(rhost, ".")[1]
 
+				log.Printf("%s", pk)
+				
 				keys := make([]string, 0, len(ptol[pk]))
 				for k := range ptol[pk] {
 					keys = append(keys, k)
