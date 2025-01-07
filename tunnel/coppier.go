@@ -25,3 +25,27 @@ func Proxy(conn1, conn2 net.Conn) {
 
 	wg.Wait()
 }
+
+func Proxy2(v2ray, client net.Conn) {
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	defer v2ray.Close()
+	defer client.Close()
+
+	go func() {
+		defer wg.Done()
+		io.Copy(v2ray, client)
+	}()
+	go func() {
+		defer wg.Done()
+		_, err := io.Copy(client, v2ray)
+		if err != nil {
+			rsp := "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 45\r\n\r\nfaghat heyvona ba ghanon jangal okht migiran!"
+			_, _ = client.Write([]byte(rsp))
+		}
+	}()
+
+	wg.Wait()
+}

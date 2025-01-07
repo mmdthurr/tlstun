@@ -1,0 +1,14 @@
+[Unit]
+Description=tls tunnel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=tlstun -m s -r $addr  -passwd $passwd
+Restart=always
+RestartSec=60s
+User=root
+
+[Install]
+WantedBy=default.target
+

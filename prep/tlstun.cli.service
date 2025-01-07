@@ -1,0 +1,13 @@
+[Unit]
+Description=tls tunnel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=tlstuncli -m c -name ir -c 30 -r irsrvip:443  -passwd 123456 
+Restart=always
+RestartSec=60s
+User=root
+
+[Install]
+WantedBy=default.target

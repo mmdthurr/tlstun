@@ -12,8 +12,11 @@ import (
 var ptol = make(map[string]map[string]LandSession)
 
 func handle_lmain(conn net.Conn, passwd string) {
-	authBuff := make([]byte, 1000)
-	_, _ = conn.Read(authBuff)
+
+	var nuint uint32 = 0
+
+	authBuff := make([]byte, 4096)
+	rn, _ := conn.Read(authBuff)
 	hello_buff := strings.Split(string(authBuff), "_")
 	if hello_buff[0] == passwd {
 		session, err := yamux.Client(conn, yamux.DefaultConfig())
@@ -29,9 +32,43 @@ func handle_lmain(conn net.Conn, passwd string) {
 		ptol[hello_buff[2]][hello_buff[1]] = LandSession{S: session}
 
 	} else {
+		spd := strings.Split(string(authBuff), "\r\n")
+		// log.Printf("%s", spd[10](buff), "\r\n"))
+		for i := 0; i < len(spd); i++ {
+			if strings.HasPrefix(spd[i], "Host: ") {
+				rhost := strings.TrimPrefix(spd[i], "Host: ")
 
-		rsp := "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 45\r\n\r\nfaghat heyvona ba ghanon jangal okht migiran!"
-		_, _ = conn.Write([]byte(rsp))
+				// customize it based on your domain since my domain be something like this kkdfs.usa.choskosh.cfd then [1] would result in usa
+				pk := strings.Split(rhost, ".")[1]
+
+				log.Printf("%s", pk)
+
+				lls, ok := ptol[pk]
+				if ok {
+					keys := make([]string, 0, len(lls))
+					for k := range lls {
+						keys = append(keys, k)
+					}
+					if len(keys) != 0 {
+						p := Nextp(keys, &nuint)
+						stream, err := lls[*p].S.Open()
+						if err == nil {
+							stream.Write(authBuff[:rn])
+							go Proxy(conn, stream)
+						} else {
+							lls[*p].S.Close()
+							delete(lls, *p)
+						}
+
+					}
+
+				}
+
+				break
+			}
+		}
+		//rsp := "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 45\r\n\r\nfaghat heyvona ba ghanon jangal okht migiran!"
+		//_, _ = conn.Write([]byte(rsp))
 
 	}
 }
@@ -55,7 +92,7 @@ func start_pdef80(addr string) {
 		rn, _ := conn.Read(buff)
 
 		spd := strings.Split(string(buff), "\r\n")
-	    // log.Printf("%s", spd[10](buff), "\r\n"))
+		// log.Printf("%s", spd[10](buff), "\r\n"))
 		for i := 0; i < len(spd); i++ {
 			if strings.HasPrefix(spd[i], "Host: ") {
 				rhost := strings.TrimPrefix(spd[i], "Host: ")
@@ -67,7 +104,6 @@ func start_pdef80(addr string) {
 
 				lls, ok := ptol[pk]
 				if ok {
-
 					keys := make([]string, 0, len(lls))
 					for k := range lls {
 						keys = append(keys, k)
