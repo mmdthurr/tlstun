@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"github.com/hashicorp/yamux"
 )
@@ -29,6 +30,20 @@ func (c Cli) StartCli() {
 		return
 
 	}
+
+	go func(session *yamux.Session) {
+
+		for {
+			_, err := sesssion.Ping()
+			if err != nil {
+				session.Close()
+				break
+			}
+			time.Sleep(3 * time.Second)
+		}
+
+	}(sesssion)
+
 	for {
 		stream, err := sesssion.Accept()
 		if err != nil {
