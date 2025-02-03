@@ -6,7 +6,8 @@ import (
 	"net"
 	"strings"
 
-	"github.com/hashicorp/yamux"
+	"github.com/xtaci/smux"
+	// "github.com/hashicorp/yamux"
 )
 
 var ptol = make(map[string]map[string]LandSession)
@@ -19,7 +20,9 @@ func handle_lmain(conn net.Conn, passwd string) {
 	rn, _ := conn.Read(authBuff)
 	hello_buff := strings.Split(string(authBuff), "_")
 	if hello_buff[0] == passwd {
-		session, err := yamux.Client(conn, yamux.DefaultConfig())
+		//	yconf := yamux.DefaultConfig()
+		//		yconf.MaxStreamWindowSize = 256 * 4096
+		session, err := smux.Client(conn, nil)
 		if err != nil {
 			log.Printf("failed start yamux client: %s", err)
 			return
@@ -51,7 +54,7 @@ func handle_lmain(conn net.Conn, passwd string) {
 					}
 					if len(keys) != 0 {
 						p := Nextp(keys, &nuint)
-						stream, err := lls[*p].S.Open()
+						stream, err := lls[*p].S.OpenStream()
 						if err == nil {
 							stream.Write(authBuff[:rn])
 							go Proxy(conn, stream)
@@ -61,7 +64,6 @@ func handle_lmain(conn net.Conn, passwd string) {
 						}
 
 					}
-
 				}
 
 				break
@@ -112,7 +114,7 @@ func start_pdef80(addr string) {
 
 						p := Nextp(keys, &nuint)
 
-						stream, err := lls[*p].S.Open()
+						stream, err := lls[*p].S.OpenStream()
 						if err == nil {
 							stream.Write(buff[:rn])
 							go Proxy(conn, stream)

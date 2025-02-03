@@ -51,7 +51,7 @@ func main() {
 						Passwd:     passwd,
 						Bckp:       v2port,
 					}.StartCli()
-					time.Sleep(1 * time.Second)
+					time.Sleep(500 * time.Millisecond)
 				}
 			}(p, *raddr, *passwd, *v2P, *nodename)
 

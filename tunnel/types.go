@@ -1,8 +1,8 @@
 package tunnel
 
-import (
-	"github.com/hashicorp/yamux"
-)
+import "github.com/xtaci/smux"
+
+//"github.com/hashicorp/yamux"
 
 type Srv struct {
 	Cliaddr string
@@ -21,5 +21,5 @@ type Cli struct {
 }
 
 type LandSession struct {
-	S *yamux.Session
+	S *smux.Session
 }
