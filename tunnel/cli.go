@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"github.com/xtaci/smux"
 	// "github.com/hashicorp/yamux"
@@ -24,7 +25,10 @@ func (c Cli) StartCli() {
 	tlsConn := tls.Client(conn, &conf)
 	tlsConn.Write([]byte(fmt.Sprintf("%s_%s_%s_", c.Passwd, c.ExposePort, c.NodeName)))
 
-	sesssion, err := smux.Server(tlsConn, nil)
+	smuxconf := smux.DefaultConfig()
+	smuxconf.KeepAliveInterval = 2 * time.Second
+	smuxconf.KeepAliveTimeout = 2 * time.Second
+	sesssion, err := smux.Server(tlsConn, smuxconf)
 	if err != nil {
 		log.Printf("failed: %s", err)
 		return

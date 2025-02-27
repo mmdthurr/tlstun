@@ -20,8 +20,10 @@ func handle_lmain(conn net.Conn, passwd string) {
 	rn, _ := conn.Read(authBuff)
 	hello_buff := strings.Split(string(authBuff), "_")
 	if hello_buff[0] == passwd {
-		//	yconf := yamux.DefaultConfig()
-		//		yconf.MaxStreamWindowSize = 256 * 4096
+		// smuxconf := smux.DefaultConfig()
+		// smuxconf.KeepAliveInterval = 2 * time.Second
+		// smuxconf.KeepAliveTimeout = 2 * time.Second
+		//	yconf.MaxStreamWindowSize = 256 * 4096
 		session, err := smux.Client(conn, nil)
 		if err != nil {
 			log.Printf("failed start yamux client: %s", err)
