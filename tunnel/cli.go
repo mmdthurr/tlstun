@@ -26,7 +26,7 @@ func (c Cli) StartCli() {
 	tlsConn.Write([]byte(fmt.Sprintf("%s_%s_%s_", c.Passwd, c.ExposePort, c.NodeName)))
 
 	smuxconf := smux.DefaultConfig()
-	smuxconf.KeepAliveTimeout = 2 * time.Second
+	smuxconf.KeepAliveTimeout = 15 * time.Second
 	sesssion, err := smux.Server(tlsConn, smuxconf)
 	if err != nil {
 		log.Printf("failed: %s", err)
