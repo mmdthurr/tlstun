@@ -12,7 +12,7 @@ import (
 
 var ptol = make(map[string]map[string]LandSession)
 
-func handle_lmain(conn net.Conn, passwd string) {
+func handle_lmain(conn net.Conn, passwd string, matrixaddr string) {
 
 	var nuint uint32 = 0
 
@@ -20,10 +20,6 @@ func handle_lmain(conn net.Conn, passwd string) {
 	rn, _ := conn.Read(authBuff)
 	hello_buff := strings.Split(string(authBuff), "_")
 	if hello_buff[0] == passwd {
-		// smuxconf := smux.DefaultConfig()
-		// smuxconf.KeepAliveInterval = 2 * time.Second
-		// smuxconf.KeepAliveTimeout = 2 * time.Second
-		//	yconf.MaxStreamWindowSize = 256 * 4096
 		session, err := smux.Client(conn, nil)
 		if err != nil {
 			log.Printf("failed start yamux client: %s", err)
@@ -39,13 +35,13 @@ func handle_lmain(conn net.Conn, passwd string) {
 	} else {
 		spd := strings.Split(string(authBuff), "\r\n")
 		// log.Printf("%s", spd[10](buff), "\r\n"))
+		has_host := false
 		for i := 0; i < len(spd); i++ {
 			if strings.HasPrefix(spd[i], "Host: ") {
 				rhost := strings.TrimPrefix(spd[i], "Host: ")
 
 				// customize it based on your domain since my domain be something like this kkdfs.usa.choskosh.cfd then [1] would result in usa
 				pk := strings.Split(rhost, ".")[1]
-
 				log.Printf("%s", pk)
 
 				lls, ok := ptol[pk]
@@ -66,9 +62,26 @@ func handle_lmain(conn net.Conn, passwd string) {
 						}
 
 					}
+				} else {
+					// pass it to backend matrix
+					backconn, err := net.Dial("tcp", matrixaddr)
+					if err == nil {
+						backconn.Write(authBuff[:rn])
+						go Proxy(conn, backconn)
+					}
 				}
 
+				has_host = true
 				break
+			}
+		}
+
+		if has_host == false {
+			//pass it to backend matrix
+			backconn, err := net.Dial("tcp", matrixaddr)
+			if err == nil {
+				backconn.Write(authBuff[:rn])
+				go Proxy(conn, backconn)
 			}
 		}
 		//rsp := "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 45\r\n\r\nfaghat heyvona ba ghanon jangal okht migiran!"
@@ -161,6 +174,6 @@ func (s Srv) StartLmain() {
 		}
 
 		tlsConn := tls.Server(conn, &conf)
-		go handle_lmain(tlsConn, s.Passwd)
+		go handle_lmain(tlsConn, s.Passwd, s.Matrixaddr)
 	}
 }
