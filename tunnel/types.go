@@ -5,12 +5,12 @@ import "github.com/xtaci/smux"
 //"github.com/hashicorp/yamux"
 
 type Srv struct {
-	Cliaddr    string
-	Laddr      string
-	Matrixaddr string
-	Passwd     string
-	Tlscert    string
-	Tlskey     string
+	Cliaddr     string
+	Tunaddr     string
+	Forwardaddr string
+	Passwd      string
+	Tlscert     string
+	Tlskey      string
 }
 
 type Cli struct {

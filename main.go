@@ -17,8 +17,8 @@ func main() {
 	tlscert := flag.String("cert", "tls.cert", "tls certificate")
 	tlskey := flag.String("key", "tls.key", "tls key")
 	passwd := flag.String("passwd", "123456", "passwd")
-	srvaddr := flag.String("sr", "0.0.0.0:4443", "addr")
-	cliaddr := flag.String("clir", "0.0.0.0:80", "cli addr")
+	Tunaddr := flag.String("sr", "0.0.0.0:4443", "addr")
+	Cliaddr := flag.String("cr", "0.0.0.0:80", "cli addr")
 	matrixaddr := flag.String("maddr", "0.0.0.0:6167", "matrix server addr")
 	//cli
 	raddr := flag.String("r", "127.0.0.1:443", "remote addr")
@@ -31,14 +31,17 @@ func main() {
 	flag.Parse()
 	if *mode == "s" {
 		s := tunnel.Srv{
-			Laddr:      *srvaddr,
-			Cliaddr:    *cliaddr,
-			Matrixaddr: *matrixaddr,
-			Passwd:     *passwd,
-			Tlscert:    *tlscert,
-			Tlskey:     *tlskey,
+			Tunaddr:     *Tunaddr,
+			Cliaddr:     *Cliaddr,
+			Forwardaddr: *matrixaddr,
+			Passwd:      *passwd,
+			Tlscert:     *tlscert,
+			Tlskey:      *tlskey,
 		}
-		s.StartLmain()
+
+		go s.LCli()
+		s.LNt()
+
 	} else if *mode == "c" {
 		var wg sync.WaitGroup
 		for p := *stP; p < (*stP + *connc); p++ {

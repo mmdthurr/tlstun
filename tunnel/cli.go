@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
+	"mmd/tlstun/tunnel/ptcp/ptcp"
 	"net"
 	"time"
 
@@ -17,7 +18,7 @@ func (c Cli) StartCli() {
 		InsecureSkipVerify: true,
 	}
 
-	conn, err := net.Dial("tcp", c.RemoteAddr)
+	conn, err := ptcp.Dial("ptcp", c.RemoteAddr)
 	if err != nil {
 		log.Printf("failed: %s", err)
 		return
@@ -26,7 +27,7 @@ func (c Cli) StartCli() {
 	tlsConn.Write([]byte(fmt.Sprintf("%s_%s_%s_", c.Passwd, c.ExposePort, c.NodeName)))
 
 	smuxconf := smux.DefaultConfig()
-	smuxconf.KeepAliveTimeout = 15 * time.Second
+	smuxconf.KeepAliveTimeout = 5 * time.Second
 	sesssion, err := smux.Server(tlsConn, smuxconf)
 	if err != nil {
 		log.Printf("failed: %s", err)
