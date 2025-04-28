@@ -3,11 +3,11 @@ package tunnel
 import (
 	"crypto/tls"
 	"log"
-	"mmd/tlstun/tunnel/ptcp/ptcp"
 	"net"
 	"slices"
 	"strings"
 
+	"github.com/xitongsys/ptcp/ptcp"
 	"github.com/xtaci/smux"
 	// "github.com/hashicorp/yamux"
 )
@@ -155,7 +155,7 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 
 }
 
-func (s Srv) LNt() {
+func (s Srv) LNt(interf string) {
 
 	cert, err := tls.LoadX509KeyPair(s.Tlscert, s.Tlskey)
 	if err != nil {
@@ -165,6 +165,7 @@ func (s Srv) LNt() {
 		Certificates: []tls.Certificate{cert},
 	}
 
+	ptcp.Init(interf)
 	listener, err := ptcp.Listen("ptcp", s.Tunaddr)
 	//	listener, err := net.Listen("tcp", s.Tunaddr)
 	if err != nil {

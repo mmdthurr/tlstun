@@ -12,6 +12,7 @@ import (
 func main() {
 
 	mode := flag.String("m", "s", "s server, c cli")
+	interf := flag.String("if", "eth0", "interface for ptcp package")
 
 	//server
 	tlscert := flag.String("cert", "tls.cert", "tls certificate")
@@ -40,7 +41,7 @@ func main() {
 		}
 
 		go s.LCli()
-		s.LNt()
+		s.LNt(*interf)
 
 	} else if *mode == "c" {
 		var wg sync.WaitGroup
@@ -54,7 +55,7 @@ func main() {
 						ExposePort: strconv.Itoa(p),
 						Passwd:     passwd,
 						Bckp:       v2port,
-					}.StartCli()
+					}.StartCli(*interf)
 					time.Sleep(500 * time.Millisecond)
 				}
 			}(p, *raddr, *passwd, *v2P, *nodename)

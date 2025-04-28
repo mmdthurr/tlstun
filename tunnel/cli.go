@@ -4,20 +4,21 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
-	"mmd/tlstun/tunnel/ptcp/ptcp"
 	"net"
 	"time"
 
+	"github.com/xitongsys/ptcp/ptcp"
 	"github.com/xtaci/smux"
 	// "github.com/hashicorp/yamux"
 )
 
-func (c Cli) StartCli() {
+func (c Cli) StartCli(interf string) {
 
 	conf := tls.Config{
 		InsecureSkipVerify: true,
 	}
 
+	ptcp.Init(interf)
 	conn, err := ptcp.Dial("ptcp", c.RemoteAddr)
 	if err != nil {
 		log.Printf("failed: %s", err)
