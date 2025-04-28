@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"log"
 	"net"
-	"slices"
 	"strings"
 
 	"github.com/xitongsys/ptcp/ptcp"
@@ -13,7 +12,6 @@ import (
 )
 
 var ptol = make(map[string]map[string]LandSession)
-var kl = make(map[string][]string)
 
 //func handle_lmain(conn net.Conn, passwd string, matrixaddr string) {
 //
@@ -115,8 +113,12 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 
 			lls, ok := ptol[pk]
 			if ok {
-				if len(kl[pk]) != 0 {
-					p := Nextp(kl[pk], &nuint)
+				keys := make([]string, 0, len(lls))
+				for k := range lls {
+					keys = append(keys, k)
+				}
+				if len(keys) != 0 {
+					p := Nextp(keys, &nuint)
 					stream, err := lls[*p].S.OpenStream()
 					if err == nil {
 						stream.Write(authBuff[:rn])
@@ -124,9 +126,6 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 					} else {
 						lls[*p].S.Close()
 						delete(lls, *p)
-						slices.DeleteFunc(kl[pk], func(s string) bool {
-							return s == *p
-						})
 					}
 
 				}
@@ -199,9 +198,6 @@ func (s Srv) LNt(interf string) {
 
 				ptol[hello_buff[2]][hello_buff[1]] = LandSession{S: session}
 
-				if slices.Contains(kl[hello_buff[2]], hello_buff[1]) {
-					kl[hello_buff[2]] = append(kl[hello_buff[2]], hello_buff[1])
-				}
 			}
 		}(TlsConn)
 	}
