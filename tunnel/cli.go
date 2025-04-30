@@ -16,7 +16,7 @@ func (c Cli) StartCli() {
 		InsecureSkipVerify: true,
 	}
 
-	conn, err := net.Dial("ptcp", c.RemoteAddr)
+	conn, err := net.Dial("tcp", c.RemoteAddr)
 	if err != nil {
 		log.Printf("failed: %s", err)
 		return
