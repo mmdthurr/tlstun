@@ -18,9 +18,10 @@ func (c Cli) StartCli() {
 
 	conn, err := net.Dial("tcp", c.RemoteAddr)
 	if err != nil {
-		log.Printf("failed: %s", err)
+		log.Printf("conn: dial: failed: %s", err)
 		return
 	}
+
 	tlsConn := tls.Client(conn, &conf)
 	tlsConn.Write([]byte(fmt.Sprintf("%s_%s_%s_", c.Passwd, c.ExposePort, c.NodeName)))
 
