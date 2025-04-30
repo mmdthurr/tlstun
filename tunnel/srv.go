@@ -10,16 +10,15 @@ import (
 	"sync"
 
 	"github.com/xtaci/smux"
-	// "github.com/hashicorp/yamux"
 )
 
 type IdToSession struct {
-	mu  *sync.Mutex
+	mu  sync.Mutex
 	Its map[string]*smux.Session
 	Is  []string
 }
 
-func (its IdToSession) add(k string, s *smux.Session) {
+func (its *IdToSession) add(k string, s *smux.Session) {
 	its.mu.Lock()
 	defer its.mu.Unlock()
 
@@ -29,7 +28,7 @@ func (its IdToSession) add(k string, s *smux.Session) {
 	}
 }
 
-func (its IdToSession) del(k string) {
+func (its *IdToSession) del(k string) {
 	its.mu.Lock()
 	defer its.mu.Unlock()
 
@@ -39,9 +38,11 @@ func (its IdToSession) del(k string) {
 	})
 }
 
-var SrvToIdToSession = make(map[string]IdToSession)
+var SrvToIdToSession = make(map[string]*IdToSession)
 
 func (s Srv) MainL() {
+
+	log.Printf("inaddr: %s,  %s", s.Tsrvs[0], s.Tsrvs[1])
 
 	cert, err := tls.LoadX509KeyPair(s.Tlscert, s.Tlskey)
 	if err != nil {
@@ -150,7 +151,7 @@ func HandleT(conn net.Conn, passwd string) {
 
 		_, ok := SrvToIdToSession[hello[2]]
 		if !ok {
-			SrvToIdToSession[hello[2]] = IdToSession{Its: make(map[string]*smux.Session)}
+			SrvToIdToSession[hello[2]] = &IdToSession{Its: make(map[string]*smux.Session)}
 		}
 
 		go SrvToIdToSession[hello[2]].add(hello[1], session)
