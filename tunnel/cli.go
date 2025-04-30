@@ -7,19 +7,16 @@ import (
 	"net"
 	"time"
 
-	"github.com/xitongsys/ptcp/ptcp"
 	"github.com/xtaci/smux"
-	// "github.com/hashicorp/yamux"
 )
 
-func (c Cli) StartCli(interf string) {
+func (c Cli) StartCli() {
 
 	conf := tls.Config{
 		InsecureSkipVerify: true,
 	}
 
-	ptcp.Init(interf)
-	conn, err := ptcp.Dial("ptcp", c.RemoteAddr)
+	conn, err := net.Dial("ptcp", c.RemoteAddr)
 	if err != nil {
 		log.Printf("failed: %s", err)
 		return
@@ -28,40 +25,27 @@ func (c Cli) StartCli(interf string) {
 	tlsConn.Write([]byte(fmt.Sprintf("%s_%s_%s_", c.Passwd, c.ExposePort, c.NodeName)))
 
 	smuxconf := smux.DefaultConfig()
-	smuxconf.KeepAliveTimeout = 5 * time.Second
+	smuxconf.KeepAliveTimeout = 1 * time.Second
 	sesssion, err := smux.Server(tlsConn, smuxconf)
 	if err != nil {
-		log.Printf("failed: %s", err)
+		log.Printf("session: smux: server: %s", err)
 		return
 
 	}
 
-	//	go func(session *smux.Session) {
-	//
-	//		for {
-	//			_, err := sesssion.Ping()
-	//			if err != nil {
-	//				session.Close()
-	//				break
-	//			}
-	//			time.Sleep(3 * time.Second)
-	//		}
-	//
-	//	}(sesssion)
-
 	for {
 		stream, err := sesssion.AcceptStream()
 		if err != nil {
-			log.Printf("failed: %s", err)
+			log.Printf("stream: session: accept: failed: %s", err)
 			break
 		}
-		destconn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%s", c.Bckp))
+		v2ray_conn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%s", c.Bckp))
 		if err != nil {
-			log.Printf("failed: %s", err)
+			log.Printf("v2rayconn: dial: failed: %s", err)
 			break
 
 		}
-		go Proxy(destconn, stream)
+		go Proxy(v2ray_conn, stream)
 	}
 
 }

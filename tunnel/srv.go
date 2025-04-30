@@ -3,229 +3,157 @@ package tunnel
 import (
 	"crypto/tls"
 	"log"
+	"math/rand"
 	"net"
+	"slices"
 	"strings"
+	"sync"
 
-	"github.com/xitongsys/ptcp/ptcp"
 	"github.com/xtaci/smux"
 	// "github.com/hashicorp/yamux"
 )
 
-var ptol = make(map[string]map[string]LandSession)
+type IdToSession struct {
+	mu  *sync.Mutex
+	Its map[string]*smux.Session
+	Is  []string
+}
 
-//func handle_lmain(conn net.Conn, passwd string, matrixaddr string) {
-//
-//	var nuint uint32 = 0
-//
-//	authBuff := make([]byte, 4096)
-//	rn, _ := conn.Read(authBuff)
-//	hello_buff := strings.Split(string(authBuff), "_")
-//	if hello_buff[0] == passwd {
-//		session, err := smux.Client(conn, nil)
-//		if err != nil {
-//			log.Printf("failed start yamux client: %s", err)
-//			return
-//		}
-//
-//		_, ok := ptol[hello_buff[2]]
-//		if !ok {
-//			ptol[hello_buff[2]] = make(map[string]LandSession)
-//		}
-//		ptol[hello_buff[2]][hello_buff[1]] = LandSession{S: session}
-//
-//	} else {
-//		spd := strings.Split(string(authBuff), "\r\n")
-//		// log.Printf("%s", spd[10](buff), "\r\n"))
-//		has_host := false
-//		for i := 0; i < len(spd); i++ {
-//			if strings.HasPrefix(spd[i], "Host: ") {
-//				rhost := strings.TrimPrefix(spd[i], "Host: ")
-//
-//				// customize it based on your domain since my domain be something like this kkdfs.usa.choskosh.cfd then [1] would result in usa
-//				pk := strings.Split(rhost, ".")[1]
-//				log.Printf("%s", pk)
-//
-//				lls, ok := ptol[pk]
-//				if ok {
-//					keys := make([]string, 0, len(lls))
-//					for k := range lls {
-//						keys = append(keys, k)
-//					}
-//					if len(keys) != 0 {
-//						p := Nextp(keys, &nuint)
-//						stream, err := lls[*p].S.OpenStream()
-//						if err == nil {
-//							stream.Write(authBuff[:rn])
-//							go Proxy(conn, stream)
-//						} else {
-//							lls[*p].S.Close()
-//							delete(lls, *p)
-//						}
-//
-//					}
-//				} else {
-//					// pass it to backend matrix
-//					backconn, err := net.Dial("tcp", matrixaddr)
-//					if err == nil {
-//						backconn.Write(authBuff[:rn])
-//						go Proxy(conn, backconn)
-//					}
-//				}
-//
-//				has_host = true
-//				break
-//			}
-//		}
-//
-//		if has_host == false {
-//			//pass it to backend matrix
-//			backconn, err := net.Dial("tcp", matrixaddr)
-//			if err == nil {
-//				backconn.Write(authBuff[:rn])
-//				go Proxy(conn, backconn)
-//			}
-//		}
-//		//rsp := "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 45\r\n\r\nfaghat heyvona ba ghanon jangal okht migiran!"
-//		//_, _ = conn.Write([]byte(rsp))
-//
-//	}
-//}
+func (its IdToSession) add(k string, s *smux.Session) {
+	its.mu.Lock()
+	defer its.mu.Unlock()
+
+	its.Its[k] = s
+	if !slices.Contains(its.Is, k) {
+		its.Is = append(its.Is, k)
+	}
+}
+
+func (its IdToSession) del(k string) {
+	its.mu.Lock()
+	defer its.mu.Unlock()
+
+	delete(its.Its, k)
+	_ = slices.DeleteFunc(its.Is, func(i string) bool {
+		return k == i
+	})
+}
+
+var SrvToIdToSession = make(map[string]IdToSession)
+
+func (s Srv) MainL() {
+
+	cert, err := tls.LoadX509KeyPair(s.Tlscert, s.Tlskey)
+	if err != nil {
+		log.Printf("mainl: err: %s", err)
+	}
+	conf := tls.Config{
+		Certificates: []tls.Certificate{cert},
+	}
+
+	listener, err := net.Listen("tcp", s.Laddr)
+	if err != nil {
+		log.Fatalf("mainl: server: listen: %s", err)
+	}
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Printf("mainl: server: accept: %s", err)
+		}
+
+		TlsConn := tls.Server(conn, &conf)
+
+		//io sepration goes here
+		go func(tlsconn net.Conn, tsrvs []string, pass string, forwardaddr string) {
+			inaddr := strings.Split(tlsconn.RemoteAddr().String(), ":")[0]
+			log.Printf("inaddr: %s", inaddr)
+			if slices.Contains(tsrvs, inaddr) {
+				//handle t
+				HandleT(tlsconn, pass)
+			} else {
+				//handle cli
+				HandleCli(tlsconn, forwardaddr)
+			}
+
+		}(TlsConn, s.Tsrvs, s.Passwd, s.Forwardaddr)
+	}
+
+}
+
+func CheckHost(buff []byte) (string, bool) {
+
+	head_split := strings.Split(string(buff), "\r\n")
+
+	for _, h := range head_split {
+
+		if strings.HasPrefix(h, "Host: ") {
+
+			// customize it based on your domain since my domain be something like this kkdfs.usa.choskosh.cfd then [1] would result in usa
+			return strings.Split(strings.TrimPrefix(h, "Host: "), ".")[1], true
+		}
+	}
+
+	return "", false
+
+}
 
 func HandleCli(Conn net.Conn, ForwardAddr string) {
 
-	var nuint uint32 = 0
-	authBuff := make([]byte, 4096)
-	rn, err := Conn.Read(authBuff)
+	Buff := make([]byte, 4096)
+	rn, err := Conn.Read(Buff)
 	if err != nil {
 		return
 	}
 
-	spd := strings.Split(string(authBuff), "\r\n")
-	// log.Printf("%s", spd[10](buff), "\r\n"))
-	has_host := false
-	for i := 0; i < len(spd); i++ {
-		if strings.HasPrefix(spd[i], "Host: ") {
-			rhost := strings.TrimPrefix(spd[i], "Host: ")
+	host, has_host := CheckHost(Buff)
+	if has_host {
 
-			// customize it based on your domain since my domain be something like this kkdfs.usa.choskosh.cfd then [1] would result in usa
-			pk := strings.Split(rhost, ".")[1]
-			log.Printf("%s", pk)
+		ss, ok := SrvToIdToSession[host]
+		if ok {
+			rand_session := rand.Intn(len(ss.Is))
+			chosen_session := ss.Its[ss.Is[rand_session]]
+			new_stream, err := chosen_session.OpenStream()
+			if err != nil {
+				chosen_session.Close()
+				go ss.del(ss.Is[rand_session])
+				return
+			}
+			new_stream.Write(Buff[:rn])
+			go Proxy(Conn, new_stream)
 
-			lls, ok := ptol[pk]
-			if ok {
-				keys := make([]string, 0, len(lls))
-				for k := range lls {
-					keys = append(keys, k)
-				}
-				if len(keys) != 0 {
-					p := Nextp(keys, &nuint)
-					stream, err := lls[*p].S.OpenStream()
-					if err == nil {
-						stream.Write(authBuff[:rn])
-						go Proxy(Conn, stream)
-					} else {
-						lls[*p].S.Close()
-						delete(lls, *p)
-					}
+		} else {
 
-				}
-			} else {
-				// pass it to backend matrix
-				backconn, err := net.Dial("tcp", ForwardAddr)
-				if err == nil {
-					backconn.Write(authBuff[:rn])
-					go Proxy(Conn, backconn)
-				}
+			back_stream, err := net.Dial("tcp", ForwardAddr)
+			if err == nil {
+				back_stream.Write(Buff[:rn])
+				go Proxy(Conn, back_stream)
 			}
 
-			has_host = true
-			break
-		}
-	}
-
-	if has_host == false {
-		//pass it to backend matrix
-		backconn, err := net.Dial("tcp", ForwardAddr)
-		if err == nil {
-			backconn.Write(authBuff[:rn])
-			go Proxy(Conn, backconn)
 		}
 	}
 
 }
 
-func (s Srv) LNt(interf string) {
+func HandleT(conn net.Conn, passwd string) {
 
-	cert, err := tls.LoadX509KeyPair(s.Tlscert, s.Tlskey)
-	if err != nil {
-		log.Printf("err: %s", err)
-	}
-	conf := tls.Config{
-		Certificates: []tls.Certificate{cert},
-	}
+	Buff := make([]byte, 1024)
+	conn.Read(Buff)
 
-	ptcp.Init(interf)
-	listener, err := ptcp.Listen("ptcp", s.Tunaddr)
-	//	listener, err := net.Listen("tcp", s.Tunaddr)
-	if err != nil {
-		log.Fatalf("server: listen: %s", err)
-	}
-
-	for {
-		conn, err := listener.Accept()
+	hello := strings.Split(string(Buff), "_")
+	if hello[0] == passwd {
+		session, err := smux.Client(conn, nil)
 		if err != nil {
-			log.Printf("server: accept: %s", err)
-			continue
+			log.Printf("HandleT: Smux: %s", err)
+			return
 		}
 
-		TlsConn := tls.Server(conn, &conf)
-		go func(Conn net.Conn) {
-			// passwd_port_nl
-			Buff := make([]byte, 1024)
-			Conn.Read(Buff)
-			hello_buff := strings.Split(string(Buff), "_")
-			if hello_buff[0] == s.Passwd {
-				session, err := smux.Client(conn, nil)
-				if err != nil {
-					log.Printf("failed start yamux client: %s", err)
-					return
-				}
-
-				_, ok := ptol[hello_buff[2]]
-				if !ok {
-					ptol[hello_buff[2]] = make(map[string]LandSession)
-				}
-
-				ptol[hello_buff[2]][hello_buff[1]] = LandSession{S: session}
-
-			}
-		}(TlsConn)
-	}
-
-}
-
-func (s Srv) LCli() {
-
-	cert, err := tls.LoadX509KeyPair(s.Tlscert, s.Tlskey)
-	if err != nil {
-		log.Printf("err: %s", err)
-	}
-	conf := tls.Config{
-		Certificates: []tls.Certificate{cert},
-	}
-
-	listener, err := net.Listen("tcp", s.Cliaddr)
-	if err != nil {
-		log.Fatalf("server: listen: %s", err)
-	}
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Printf("server: accept: %s", err)
+		_, ok := SrvToIdToSession[hello[2]]
+		if !ok {
+			SrvToIdToSession[hello[2]] = IdToSession{Its: make(map[string]*smux.Session)}
 		}
 
-		tlsConn := tls.Server(conn, &conf)
-		go HandleCli(tlsConn, s.Forwardaddr)
+		go SrvToIdToSession[hello[2]].add(hello[1], session)
+
 	}
 }

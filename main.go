@@ -12,14 +12,12 @@ import (
 func main() {
 
 	mode := flag.String("m", "s", "s server, c cli")
-	interf := flag.String("if", "eth0", "interface for ptcp package")
+	passwd := flag.String("passwd", "123456", "passwd")
 
 	//server
 	tlscert := flag.String("cert", "tls.cert", "tls certificate")
 	tlskey := flag.String("key", "tls.key", "tls key")
-	passwd := flag.String("passwd", "123456", "passwd")
-	Tunaddr := flag.String("sr", "0.0.0.0:4443", "addr")
-	Cliaddr := flag.String("cr", "0.0.0.0:80", "cli addr")
+	laddr := flag.String("lr", "0.0.0.0:443", "addr")
 	matrixaddr := flag.String("maddr", "0.0.0.0:6167", "matrix server addr")
 	//cli
 	raddr := flag.String("r", "127.0.0.1:443", "remote addr")
@@ -32,16 +30,14 @@ func main() {
 	flag.Parse()
 	if *mode == "s" {
 		s := tunnel.Srv{
-			Tunaddr:     *Tunaddr,
-			Cliaddr:     *Cliaddr,
+			Laddr:       *laddr,
 			Forwardaddr: *matrixaddr,
 			Passwd:      *passwd,
 			Tlscert:     *tlscert,
 			Tlskey:      *tlskey,
 		}
 
-		go s.LCli()
-		s.LNt(*interf)
+		s.MainL()
 
 	} else if *mode == "c" {
 		var wg sync.WaitGroup
@@ -55,7 +51,7 @@ func main() {
 						ExposePort: strconv.Itoa(p),
 						Passwd:     passwd,
 						Bckp:       v2port,
-					}.StartCli(*interf)
+					}.StartCli()
 					time.Sleep(500 * time.Millisecond)
 				}
 			}(p, *raddr, *passwd, *v2P, *nodename)

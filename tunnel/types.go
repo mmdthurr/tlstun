@@ -1,12 +1,8 @@
 package tunnel
 
-import "github.com/xtaci/smux"
-
-//"github.com/hashicorp/yamux"
-
 type Srv struct {
-	Cliaddr     string
-	Tunaddr     string
+	Laddr       string
+	Tsrvs       []string
 	Forwardaddr string
 	Passwd      string
 	Tlscert     string
@@ -19,8 +15,4 @@ type Cli struct {
 	ExposePort string
 	Passwd     string
 	Bckp       string
-}
-
-type LandSession struct {
-	S *smux.Session
 }
