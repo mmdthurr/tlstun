@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,6 +18,7 @@ func main() {
 	//server
 	tlscert := flag.String("cert", "tls.cert", "tls certificate")
 	tlskey := flag.String("key", "tls.key", "tls key")
+	trusted := flag.String("t", "127.0.0.1,127.0.1", "trusted tunnel initiate")
 	laddr := flag.String("lr", "0.0.0.0:443", "addr")
 	matrixaddr := flag.String("maddr", "0.0.0.0:6167", "matrix server addr")
 	//cli
@@ -31,6 +33,7 @@ func main() {
 	if *mode == "s" {
 		s := tunnel.Srv{
 			Laddr:       *laddr,
+			Tsrvs:       strings.Split(*trusted, ","),
 			Forwardaddr: *matrixaddr,
 			Passwd:      *passwd,
 			Tlscert:     *tlscert,
