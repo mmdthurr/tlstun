@@ -113,17 +113,23 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 		ss, ok := SrvToIdToSession[host]
 		if ok {
 			for {
-				rand_session := rand.Intn(len(ss.Is))
-				chosen_session := ss.Its[ss.Is[rand_session]]
-				new_stream, err := chosen_session.OpenStream()
-				if err != nil {
-					chosen_session.Close()
-					go ss.del(ss.Is[rand_session])
-					continue
+				len_of_is := len(ss.Is)
+				if len_of_is > 0 {
+					rand_session := rand.Intn(len_of_is)
+					chosen_session := ss.Its[ss.Is[rand_session]]
+					new_stream, err := chosen_session.OpenStream()
+					if err != nil {
+						chosen_session.Close()
+						go ss.del(ss.Is[rand_session])
+						continue
+					}
+					new_stream.Write(Buff[:rn])
+					go Proxy(Conn, new_stream)
+					break
 				}
-				new_stream.Write(Buff[:rn])
-				go Proxy(Conn, new_stream)
-				break
+				if len_of_is == 0 {
+					break
+				}
 			}
 		} else {
 
