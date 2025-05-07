@@ -112,7 +112,9 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 
 		ss, ok := SrvToIdToSession[host]
 		if ok {
+			c_l := 0
 			for {
+				c_l = c_l + 1
 				len_of_is := len(ss.Is)
 				if len_of_is > 0 {
 					rand_session := rand.Intn(len_of_is)
@@ -127,7 +129,7 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 					go Proxy(Conn, new_stream)
 					break
 				}
-				if len_of_is == 0 {
+				if (len_of_is == 0) || (c_l == 40) {
 					break
 				}
 			}
