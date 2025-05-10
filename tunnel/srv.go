@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/xtaci/smux"
 )
@@ -125,9 +126,16 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 						go ss.del(ss.Is[rand_session])
 						continue
 					}
-					new_stream.Write(Buff[:rn])
-					go Proxy(Conn, new_stream)
-					break
+					new_stream.SetDeadline(time.Now().Add(1 * time.Second))
+					_, err = new_stream.Write(Buff[:rn])
+					if err != nil {
+						chosen_session.Close()
+						go ss.del(ss.Is[rand_session])
+						continue
+					} else {
+						go Proxy(Conn, new_stream)
+						break
+					}
 				}
 				if (len_of_is == 0) || (c_l == 40) {
 					break
