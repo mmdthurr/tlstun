@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/xtaci/smux"
 )
@@ -126,7 +125,6 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 						go ss.del(ss.Is[rand_session])
 						continue
 					}
-					new_stream.SetWriteDeadline(time.Now().Add(2 * time.Second))
 					_, err = new_stream.Write(Buff[:rn])
 					if err != nil {
 						chosen_session.Close()
