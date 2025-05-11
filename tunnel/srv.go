@@ -127,8 +127,7 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 					}
 					_, err = new_stream.Write(Buff[:rn])
 					if err != nil {
-						chosen_session.Close()
-						go ss.del(ss.Is[rand_session])
+						new_stream.Close()
 						continue
 					} else {
 						go Proxy(Conn, new_stream)
