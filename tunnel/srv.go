@@ -158,7 +158,9 @@ func HandleT(conn net.Conn, passwd string) {
 
 	hello := strings.Split(string(Buff), "_")
 	if hello[0] == passwd {
-		session, err := smux.Client(conn, nil)
+		mux_conf := smux.DefaultConfig()
+		mux_conf.KeepAliveDisabled = true
+		session, err := smux.Client(conn, mux_conf)
 		if err != nil {
 			log.Printf("HandleT: Smux: %s", err)
 			return
