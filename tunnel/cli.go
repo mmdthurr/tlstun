@@ -22,15 +22,16 @@ func (c Cli) StartCli() {
 	}
 
 	tlsConn := tls.Client(conn, &conf)
-	tlsConn.Write([]byte(fmt.Sprintf("%s_%s_%s_", c.Passwd, c.ExposePort, c.NodeName)))
+
+	tlsConn.Write(fmt.Appendf([]byte{}, "%s_%s_%s_", c.Passwd, c.ExposePort, c.NodeName))
 
 	smuxconf := smux.DefaultConfig()
 	smuxconf.KeepAliveDisabled = true
+
 	sesssion, err := smux.Server(tlsConn, smuxconf)
 	if err != nil {
 		log.Printf("session: smux: server: %s", err)
 		return
-
 	}
 
 	for {

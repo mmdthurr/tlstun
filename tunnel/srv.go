@@ -68,7 +68,6 @@ func (s Srv) MainL() {
 		//io sepration goes here
 		go func(tlsconn net.Conn, tsrvs []string, pass string, forwardaddr string) {
 			inaddr := strings.Split(tlsconn.RemoteAddr().String(), ":")[0]
-			log.Printf("inaddr: %s", inaddr)
 			if slices.Contains(tsrvs, inaddr) {
 				//handle t
 				HandleT(tlsconn, pass)
@@ -121,12 +120,14 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 					chosen_session := ss.Its[ss.Is[rand_session]]
 					new_stream, err := chosen_session.OpenStream()
 					if err != nil {
+						log.Printf("smux_open_new_stream: %s \n", err)
 						chosen_session.Close()
 						go ss.del(ss.Is[rand_session])
 						continue
 					}
 					_, err = new_stream.Write(Buff[:rn])
 					if err != nil {
+						log.Printf("smux_new_stream_write: %s \n", err)
 						new_stream.Close()
 						continue
 					} else {
