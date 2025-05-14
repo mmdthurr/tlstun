@@ -135,7 +135,7 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 						break
 					}
 				}
-				if (len_of_is == 0) || (c_l == 40) {
+				if (len_of_is == 0) || (c_l == 20) {
 					Conn.Close()
 					break
 				}
