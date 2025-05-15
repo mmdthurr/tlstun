@@ -148,11 +148,12 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 			}
 		} else {
 
-			back_stream, err := net.Dial("tcp", ForwardAddr)
-			if err == nil {
-				back_stream.Write(Buff[:rn])
-				go Proxy(Conn, back_stream)
-			}
+			Conn.Write([]byte("salam agha police"))
+			//	back_stream, err := net.Dial("tcp", ForwardAddr)
+			//		if err == nil {
+			//			back_stream.Write(Buff[:rn])
+			//			go Proxy(Conn, back_stream)
+			//		}
 
 		}
 	}
