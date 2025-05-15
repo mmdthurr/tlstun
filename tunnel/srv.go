@@ -113,13 +113,15 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 		if ok {
 			c_l := 0
 			for {
+
 				c_l = c_l + 1
 				len_of_is := len(ss.Is)
+				rand_session := rand.Intn(len_of_is)
+
 				if len_of_is > 0 {
-					rand_session := rand.Intn(len_of_is)
 					chosen_session := ss.Its[ss.Is[rand_session]]
 					new_stream, err := chosen_session.OpenStream()
-					if err != nil {
+					if (err != nil) && (err != smux.ErrGoAway) {
 						log.Printf("smux_open_new_stream: %s \n", err)
 						chosen_session.Close()
 						go ss.del(ss.Is[rand_session])
