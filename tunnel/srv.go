@@ -112,15 +112,10 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 		ss, ok := SrvToIdToSession[host]
 		if ok {
 			c_l := 0
-			rand_session := rand.Intn(len(ss.Is))
 			for {
 				c_l = c_l + 1
 				len_of_is := len(ss.Is)
-				if rand_session >= len_of_is {
-					rand_session = 0
-				} else {
-					rand_session = rand_session + 1
-				}
+				rand_session := rand.Intn(len_of_is)
 
 				if len_of_is > 0 {
 					chosen_session := ss.Its[ss.Is[rand_session]]
