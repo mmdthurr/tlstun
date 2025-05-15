@@ -70,10 +70,10 @@ func (s Srv) MainL() {
 			inaddr := strings.Split(tlsconn.RemoteAddr().String(), ":")[0]
 			if slices.Contains(tsrvs, inaddr) {
 				//handle t
-				HandleT(tlsconn, pass)
+				go HandleT(tlsconn, pass)
 			} else {
 				//handle cli
-				HandleCli(tlsconn, forwardaddr)
+				go HandleCli(tlsconn, forwardaddr)
 			}
 
 		}(TlsConn, s.Tsrvs, s.Passwd, s.Forwardaddr)
@@ -88,7 +88,6 @@ func CheckHost(buff []byte) (string, bool) {
 	for _, h := range head_split {
 
 		if strings.HasPrefix(h, "Host: ") {
-
 			// customize it based on your domain since my domain be something like this kkdfs.usa.choskosh.cfd then [1] would result in usa
 			return strings.Split(strings.TrimPrefix(h, "Host: "), ".")[1], true
 		}
@@ -103,6 +102,7 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 	Buff := make([]byte, 4096)
 	rn, err := Conn.Read(Buff)
 	if err != nil {
+		Conn.Close()
 		return
 	}
 
@@ -112,11 +112,15 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 		ss, ok := SrvToIdToSession[host]
 		if ok {
 			c_l := 0
+			rand_session := rand.Intn(len(ss.Is))
 			for {
-
 				c_l = c_l + 1
 				len_of_is := len(ss.Is)
-				rand_session := rand.Intn(len_of_is)
+				if rand_session >= len_of_is {
+					rand_session = 0
+				} else {
+					rand_session = rand_session + 1
+				}
 
 				if len_of_is > 0 {
 					chosen_session := ss.Its[ss.Is[rand_session]]
@@ -124,7 +128,7 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 
 					if (err != nil) && (err != smux.ErrGoAway) {
 						log.Printf("smux_open_new_stream: %s \n", err)
-						chosen_session.Close()
+						go chosen_session.Close()
 						go ss.del(ss.Is[rand_session])
 						continue
 					} else if err != nil {
@@ -134,28 +138,25 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 					_, err = new_stream.Write(Buff[:rn])
 					if err != nil {
 						log.Printf("smux_new_stream_write: %s \n", err)
-						new_stream.Close()
+						go new_stream.Close()
 						continue
 					} else {
 						go Proxy(Conn, new_stream)
 						break
 					}
 				}
-				if (len_of_is == 0) || (c_l == 20) {
+				if (len_of_is == 0) || (c_l == 10) {
 					Conn.Close()
 					break
 				}
 			}
 		} else {
-
 			Conn.Write([]byte("salam agha police"))
-			//	back_stream, err := net.Dial("tcp", ForwardAddr)
-			//		if err == nil {
-			//			back_stream.Write(Buff[:rn])
-			//			go Proxy(Conn, back_stream)
-			//		}
-
+			Conn.Close()
 		}
+	} else {
+		Conn.Write([]byte("salam agha police"))
+		Conn.Close()
 	}
 
 }
