@@ -3,7 +3,6 @@ package tunnel
 import (
 	"crypto/tls"
 	"log"
-	"math/rand"
 	"net"
 	"slices"
 	"strings"
@@ -16,6 +15,17 @@ type IdToSession struct {
 	mu  sync.Mutex
 	Its map[string]*smux.Session
 	Is  []string
+	rc  int
+}
+
+func (its *IdToSession) next() int {
+	its.mu.Lock()
+	defer its.mu.Unlock()
+	its.rc = its.rc + 1
+	if its.rc > len(its.Is) {
+		return 0
+	}
+	return its.rc
 }
 
 func (its *IdToSession) add(k string, s *smux.Session) {
@@ -115,7 +125,8 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 			for {
 				c_l = c_l + 1
 				len_of_is := len(ss.Is)
-				rand_session := rand.Intn(len_of_is)
+				//rand_session := rand.Intn(len_of_is)
+				rand_session := ss.next()
 
 				if len_of_is > 0 {
 					chosen_session := ss.Its[ss.Is[rand_session]]
