@@ -22,7 +22,7 @@ func (its *IdToSession) next() int {
 	its.mu.Lock()
 	defer its.mu.Unlock()
 	its.rc = its.rc + 1
-	if its.rc > len(its.Is) {
+	if its.rc >= len(its.Is) {
 		return 0
 	}
 	return its.rc
