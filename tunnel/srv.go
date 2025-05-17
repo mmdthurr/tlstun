@@ -148,7 +148,7 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 							go Proxy(Conn, new_stream)
 							break
 						}
-					case <-time.After(2 * time.Second):
+					case <-time.After(10 * time.Second):
 						new_stream.Close()
 						//chosen_session.Close()
 						//go ss.del(ss.Is[rand_session])
