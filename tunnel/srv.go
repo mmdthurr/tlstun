@@ -151,8 +151,15 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 
 					err = writeTimeout(new_stream, Buff[:rn])
 					if err != nil {
+
 						log.Printf("smux_new_stream_write: %s \n", err)
 						new_stream.Close()
+
+						if err == smux.ErrTimeout {
+							chosen_session.Close()
+							go ss.del(ss.Is[rand_session])
+						}
+
 						continue
 					} else {
 						go Proxy(Conn, new_stream)
