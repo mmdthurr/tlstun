@@ -108,7 +108,7 @@ func writeTimeout(conn net.Conn, buff []byte) error {
 	select {
 	case err := <-errchan:
 		return err
-	case <-time.After(3 * time.Second):
+	case <-time.After(1 * time.Second):
 		conn.SetWriteDeadline(time.Now().Add(-time.Second))
 		return smux.ErrTimeout
 	}
