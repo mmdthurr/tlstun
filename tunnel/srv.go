@@ -98,6 +98,23 @@ func CheckHost(buff []byte) (string, bool) {
 
 }
 
+func writeTimeout(conn net.Conn, buff []byte) error {
+	errchan := make(chan error, 1)
+	go func() {
+		_, err := conn.Write(buff)
+		errchan <- err
+	}()
+
+	select {
+	case err := <-errchan:
+		return err
+	case <-time.After(3 * time.Second):
+		conn.SetWriteDeadline(time.Now().Add(-time.Second))
+		return smux.ErrTimeout
+	}
+
+}
+
 func HandleCli(Conn net.Conn, ForwardAddr string) {
 
 	Buff := make([]byte, 4096)
@@ -132,27 +149,14 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 						continue
 					}
 
-					errchan := make(chan error, 1)
-					go func() {
-						_, err = new_stream.Write(Buff[:rn])
-						errchan <- err
-					}()
-
-					select {
-					case err := <-errchan:
-						if err != nil {
-							log.Printf("smux_new_stream_write: %s \n", err)
-							new_stream.Close()
-							continue
-						} else {
-							go Proxy(Conn, new_stream)
-							break
-						}
-					case <-time.After(5 * time.Second):
-						new_stream.SetWriteDeadline(time.Now().Add(-time.Second))
-						//chosen_session.Close()
-						//go ss.del(ss.Is[rand_session])
+					err = writeTimeout(new_stream, Buff[:rn])
+					if err != nil {
+						log.Printf("smux_new_stream_write: %s \n", err)
+						new_stream.Close()
 						continue
+					} else {
+						go Proxy(Conn, new_stream)
+						break
 					}
 
 				}
