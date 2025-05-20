@@ -172,6 +172,7 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 					if err != nil {
 
 						log.Printf("smux_new_stream_write: %s \n", err)
+						new_stream.Close()
 
 						if err == smux.ErrTimeout {
 							chosen_session.Close()
@@ -183,7 +184,9 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 
 						err = readTimeout(new_stream)
 						if err != nil {
+
 							log.Printf("smux_new_stream_first_read: %s \n", err)
+							new_stream.Close()
 
 							if err == smux.ErrTimeout {
 								chosen_session.Close()
