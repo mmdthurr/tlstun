@@ -128,7 +128,7 @@ func readTimeout(conn net.Conn) error {
 	case err := <-errchan:
 		return err
 	case <-time.After(1 * time.Second):
-		conn.SetWriteDeadline(time.Now().Add(-time.Second))
+		conn.SetReadDeadline(time.Now().Add(-time.Second))
 		return smux.ErrTimeout
 	}
 
