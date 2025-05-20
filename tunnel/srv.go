@@ -115,6 +115,25 @@ func writeTimeout(conn net.Conn, buff []byte) error {
 
 }
 
+func readTimeout(conn net.Conn) error {
+	errchan := make(chan error, 1)
+	buff := make([]byte, 4096)
+	go func() {
+		rn, err := conn.Read(buff)
+		errchan <- err
+		go conn.Write(buff[:rn])
+	}()
+
+	select {
+	case err := <-errchan:
+		return err
+	case <-time.After(1 * time.Second):
+		conn.SetWriteDeadline(time.Now().Add(-time.Second))
+		return smux.ErrTimeout
+	}
+
+}
+
 func HandleCli(Conn net.Conn, ForwardAddr string) {
 
 	Buff := make([]byte, 4096)
@@ -153,7 +172,6 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 					if err != nil {
 
 						log.Printf("smux_new_stream_write: %s \n", err)
-						new_stream.Close()
 
 						if err == smux.ErrTimeout {
 							chosen_session.Close()
@@ -162,8 +180,21 @@ func HandleCli(Conn net.Conn, ForwardAddr string) {
 
 						continue
 					} else {
-						go Proxy(Conn, new_stream)
-						break
+
+						err = readTimeout(new_stream)
+						if err != nil {
+							log.Printf("smux_new_stream_first_read: %s \n", err)
+
+							if err == smux.ErrTimeout {
+								chosen_session.Close()
+								go ss.del(ss.Is[rand_session])
+							}
+							continue
+
+						} else {
+							go Proxy(Conn, new_stream)
+							break
+						}
 					}
 
 				}
