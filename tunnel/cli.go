@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"github.com/xtaci/smux"
 )
@@ -26,7 +27,8 @@ func (c Cli) StartCli() {
 	tlsConn.Write(fmt.Appendf([]byte{}, "%s_%s_%s_", c.Passwd, c.ExposePort, c.NodeName))
 
 	smuxconf := smux.DefaultConfig()
-	smuxconf.KeepAliveDisabled = true
+	//smuxconf.KeepAliveDisabled = true
+	smuxconf.KeepAliveTimeout = 15 * time.Second
 
 	sesssion, err := smux.Server(tlsConn, smuxconf)
 	if err != nil {
